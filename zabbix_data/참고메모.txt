@@ -1,0 +1,57 @@
+# 209 DB 접속 후 INSERT
+/usr/bin/mysql -uroot -pRkdqnrlte1q -h 172.21.27.209 --local-infile -e "LOAD DATA LOCAL INFILE '/root/scripts/database/zabbix/zabbix_values.csv' INTO TABLE oneview.zabbix_values character set utf8 FIELDS TERMINATED BY ',' IGNORE 1 ROWS";
+
+# crontab 1시간마다 실행
+# 0 */1 * * * python /root/scripts/database/zabbix/insert_values.py
+
+# 폐쇄망 yum 실행을 위한 repo 설정
+# CentOS-Base.repo
+#
+# The mirror system uses the connecting IP address of the client and the
+# update status of each mirror to pick mirrors that are updated to and
+# geographically close to the client.  You should use this for CentOS updates
+# unless you are manually picking other mirrors.
+#
+# If the mirrorlist= does not work for you, as a fall back you can try the 
+# remarked out baseurl= line instead.
+#
+#
+
+[base]
+name=CentOS-$releasever - Base
+baseurl=http://172.21.27.207/myrepo/base
+gpgcheck=0
+
+[updates]
+name=CentOS-$releasever - Updates
+baseurl=http://172.21.27.207/myrepo/updates
+gpgcheck=0
+
+[extras]
+name=CentOS-$releasever - Extras
+baseurl=http://172.21.27.207/myrepo/extras
+gpgcheck=0
+
+# DB 파티셔닝 생성
+ALTER TABLE `zabbix_values` 
+PARTITION BY RANGE (TO_DAYS(`date`)) (
+PARTITION p_2022_01 VALUES LESS THAN (TO_DAYS('2022-02-01')) ENGINE = INNODB,
+PARTITION p_2022_02 VALUES LESS THAN (TO_DAYS('2022-03-01')) ENGINE = INNODB,
+PARTITION p_2022_03 VALUES LESS THAN (TO_DAYS('2022-04-01')) ENGINE = INNODB,
+PARTITION p_2022_04 VALUES LESS THAN (TO_DAYS('2022-05-01')) ENGINE = INNODB,
+PARTITION p_2022_05 VALUES LESS THAN (TO_DAYS('2022-06-01')) ENGINE = INNODB,
+PARTITION p_2022_06 VALUES LESS THAN (TO_DAYS('2022-07-01')) ENGINE = INNODB,
+PARTITION p_2022_07 VALUES LESS THAN (TO_DAYS('2022-08-01')) ENGINE = INNODB,
+PARTITION p_2022_08 VALUES LESS THAN (TO_DAYS('2022-09-01')) ENGINE = INNODB,
+PARTITION p_2022_09 VALUES LESS THAN (TO_DAYS('2022-10-01')) ENGINE = INNODB,
+PARTITION p_2022_10 VALUES LESS THAN (TO_DAYS('2022-11-01')) ENGINE = INNODB,
+PARTITION p_2022_11 VALUES LESS THAN (TO_DAYS('2022-12-01')) ENGINE = INNODB
+) 
+
+# 파티셔닝 추가
+ALTER TABLE `zabbix_values` ADD PARTITION ( PARTITION p_2022_12 VALUES LESS THAN (TO_DAYS('2023-01-01')) ENGINE = INNODB)
+
+# 파티션 확인
+SELECT TABLE_SCHEMA, TABLE_NAME, PARTITION_NAME, PARTITION_ORDINAL_POSITION, TABLE_ROWS
+FROM INFORMATION_SCHEMA.PARTITIONS
+WHERE TABLE_NAME =  'zabbix_values';
